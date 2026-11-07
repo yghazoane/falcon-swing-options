@@ -25,7 +25,7 @@ export interface SessionInfo {
   nyDate: string;
   nyTime: string; // HH:MM
   earlyClose: boolean;
-  holidayName?: string;
+  holidayName?: string | undefined;
 }
 
 function nyParts(now: Date) {

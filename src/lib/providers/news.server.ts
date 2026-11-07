@@ -63,7 +63,7 @@ function decode(s: string): string {
 
 function tag(block: string, name: string): string | null {
   const m = block.match(new RegExp(`<${name}\\b[^>]*>([\\s\\S]*?)</${name}>`, "i"));
-  return m ? decode(m[1]) : null;
+  return m?.[1] != null ? decode(m[1]) : null;
 }
 
 export function parseRss(xml: string): { title: string; link: string; description: string | null; pubDate: string | null; category: string | null }[] {
@@ -71,7 +71,7 @@ export function parseRss(xml: string): { title: string; link: string; descriptio
   const re = /<item\b[^>]*>([\s\S]*?)<\/item>/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(xml))) {
-    const block = m[1];
+    const block = m[1] ?? "";
     const title = tag(block, "title");
     const link = tag(block, "link");
     if (!title || !link) continue;

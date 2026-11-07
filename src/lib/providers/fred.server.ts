@@ -17,7 +17,7 @@ export function parseFredCsv(csv: string): Observation[] {
   }
   const out: Observation[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const [date, raw] = lines[i].split(",");
+    const [date, raw] = (lines[i] ?? "").split(",");
     const value = Number(raw);
     if (!date || raw === undefined || raw === "." || raw === "" || !Number.isFinite(value)) continue;
     out.push({ date, value });

@@ -2,7 +2,7 @@
 
 export type Num = number | null;
 
-export function sma(values: number[], period: number): Num[] {
+export function sma(input: number[], period: number): Num[] {
   const out: Num[] = new Array(values.length).fill(null);
   if (period <= 0) return out;
   let sum = 0;
