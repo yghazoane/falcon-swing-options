@@ -31,8 +31,8 @@ export interface DescriptiveStats {
 
 export function describeSeries(points: ClosePoint[], mode: "price" | "level"): DescriptiveStats | null {
   if (points.length < 2) return null;
-  const first = points[0];
-  const last = points[points.length - 1];
+  const first = points[0]!;
+  const last = points[points.length - 1]!;
   let high = first;
   let low = first;
   let peak = first;
@@ -42,11 +42,11 @@ export function describeSeries(points: ClosePoint[], mode: "price" | "level"): D
   const changes: { date: string; value: number }[] = [];
 
   for (let i = 0; i < points.length; i++) {
-    const p = points[i];
+    const p = points[i]!;
     if (p.close > high.close) high = p;
     if (p.close < low.close) low = p;
     if (i > 0) {
-      const prev = points[i - 1].close;
+      const prev = points[i - 1]!.close;
       changes.push({
         date: p.date,
         value: mode === "price" ? (p.close / prev - 1) * 100 : p.close - prev,
@@ -71,7 +71,7 @@ export function describeSeries(points: ClosePoint[], mode: "price" | "level"): D
   if (changes.length > 2) {
     const vals =
       mode === "price"
-        ? points.slice(1).map((p, i) => Math.log(p.close / points[i].close))
+        ? points.slice(1).map((p, i) => Math.log(p.close / points[i]!.close))
         : changes.map((c) => c.value);
     const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
     const sd = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / (vals.length - 1));
@@ -97,8 +97,8 @@ export function describeSeries(points: ClosePoint[], mode: "price" | "level"): D
     maxDrawdownPct: mode === "price" ? maxDd : null,
     maxDrawdownPeakDate: ddPeak,
     maxDrawdownTroughDate: ddTrough,
-    bestDay: sorted.length ? sorted[sorted.length - 1] : null,
-    worstDay: sorted.length ? sorted[0] : null,
+    bestDay: sorted[sorted.length - 1] ?? null,
+    worstDay: sorted[0] ?? null,
     upDaysPct: changes.length ? (changes.filter((c) => c.value > 0).length / changes.length) * 100 : null,
   };
 }
@@ -117,7 +117,7 @@ export function signalEvents(closes: number[], signal: SignalId): number[] {
   if (signal === "cross_above_sma200") {
     const s = sma(closes, 200);
     for (let i = 1; i < closes.length; i++) {
-      if (s[i] != null && s[i - 1] != null && closes[i - 1] <= s[i - 1]! && closes[i] > s[i]!)
+      if (s[i] != null && s[i - 1] != null && closes[i - 1]! <= s[i - 1]! && closes[i]! > s[i]!)
         events.push(i);
     }
   } else if (signal === "golden_cross") {
@@ -179,7 +179,7 @@ function bucket(values: number[]): BucketStats {
     n: values.length,
     hitRatePct: (values.filter((v) => v > 0).length / values.length) * 100,
     avgFwdPct: values.reduce((a, b) => a + b, 0) / values.length,
-    medianFwdPct: sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2,
+    medianFwdPct: sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2,
   };
 }
 
@@ -196,7 +196,7 @@ export function testSignal(
   splitRatio = 0.7,
 ): SignalTestResult {
   const closes = points.map((p) => p.close);
-  const fwd = (i: number) => (closes[i + horizon] / closes[i] - 1) * 100;
+  const fwd = (i: number) => (closes[i + horizon]! / closes[i]! - 1) * 100;
   const lastEligible = closes.length - 1 - horizon;
   const events = signalEvents(closes, signal).filter((i) => i >= fromIndex && i <= lastEligible);
 
@@ -219,6 +219,6 @@ export function testSignal(
     outOfSample: bucket(events.filter((i) => i >= splitIdx).map(fwd)),
     splitDate: points[splitIdx]?.date ?? null,
     smallSample: ev.n < 30,
-    lastEventDate: events.length ? points[events[events.length - 1]].date : null,
+    lastEventDate: events.length ? (points[events[events.length - 1]!]?.date ?? null) : null,
   };
 }
