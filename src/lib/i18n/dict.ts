@@ -294,6 +294,21 @@ const en = {
   "notFound.title": "Page not found",
   "notFound.body": "The page you are looking for does not exist.",
   "notFound.home": "Back to overview",
+
+  "topbar.nav": "Main navigation",
+  "topbar.realtimeOff": "Real-time feed: not configured",
+  "chart.overlays": "Overlays",
+  "chart.panels": "Panels",
+  "chart.timeAxis": "Daily closes · time runs left to right",
+  "macro.thousands": "K",
+  "news.category": "Category",
+  "news.allImportance": "All levels",
+  "news.count": "{n} headlines",
+  "sources.envVar": "Server-side secret name",
+  "sources.optional": "Optional",
+  "history.preset": "Preset",
+  "history.apply": "Apply",
+  "history.instrumentNote": "Index levels (SPX, NDX) are price-only daily closes; ETF proxies include volume when a provider is configured.",
 };
 
 export type DictKey = keyof typeof en;
@@ -594,6 +609,21 @@ const ar: Dict = {
   "notFound.title": "الصفحة غير موجودة",
   "notFound.body": "الصفحة التي تبحث عنها غير موجودة.",
   "notFound.home": "العودة إلى النظرة العامة",
+
+  "topbar.nav": "التنقل الرئيسي",
+  "topbar.realtimeOff": "البث اللحظي: غير مُفعّل",
+  "chart.overlays": "المتوسطات",
+  "chart.panels": "اللوحات",
+  "chart.timeAxis": "إغلاقات يومية · الزمن من اليسار إلى اليمين",
+  "macro.thousands": "ألف",
+  "news.category": "الفئة",
+  "news.allImportance": "كل المستويات",
+  "news.count": "{n} خبر",
+  "sources.envVar": "اسم السر على الخادم",
+  "sources.optional": "اختياري",
+  "history.preset": "الفترة",
+  "history.apply": "تطبيق",
+  "history.instrumentNote": "مستويات المؤشرات (SPX وNDX) إغلاقات يومية للسعر فقط؛ أما صناديق ETF البديلة فتتضمن حجم التداول عند تهيئة مزوّد بيانات.",
 };
 
 export const DICTIONARIES = { en, ar } as const;
