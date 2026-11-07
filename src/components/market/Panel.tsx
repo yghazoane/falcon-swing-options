@@ -41,7 +41,7 @@ export function Panel({
   );
 }
 
-export function SourceLink({ name, url }: { name: string; url?: string }) {
+export function SourceLink({ name, url }: { name: string; url?: string | undefined }) {
   if (!url) return <span>{name}</span>;
   return (
     <a
