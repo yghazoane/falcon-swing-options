@@ -195,8 +195,8 @@ export function transformMacro(obs: Observation[], t: Transform) {
       };
     case "diff":
       return {
-        actual: at(0) && at(1) ? at(0).value - at(1).value : null,
-        previous: at(1) && at(2) ? at(1).value - at(2).value : null,
+        actual: at(0) && at(1) ? at(0)!.value - at(1)!.value : null,
+        previous: at(1) && at(2) ? at(1)!.value - at(2)!.value : null,
         secondary: null,
         secondaryPrevious: null,
       };
@@ -262,8 +262,8 @@ async function loadFedTarget(): Promise<FedTarget> {
     const lastL = lower[lower.length - 1];
     let lastChangeDate: string | null = null;
     for (let i = upper.length - 1; i > 0; i--) {
-      if (upper[i].value !== upper[i - 1].value) {
-        lastChangeDate = upper[i].date;
+      if (upper[i]!.value !== upper[i - 1]!.value) {
+        lastChangeDate = upper[i]!.date;
         break;
       }
     }
@@ -322,7 +322,7 @@ export async function getMacroData(env: ProviderEnv): Promise<MacroResult> {
 export async function getNewsData(env: ProviderEnv): Promise<NewsResult> {
   const results = await Promise.allSettled(RSS_FEEDS.map((f) => fetchFeed(f)));
   const feeds: FeedStatus[] = RSS_FEEDS.map((f, i) => {
-    const r = results[i];
+    const r = results[i]!;
     return r.status === "fulfilled"
       ? { id: f.id, name: f.name, status: "delayed", count: r.value.length, url: f.homepage }
       : { id: f.id, name: f.name, status: "error", count: 0, note: failureNote(r.reason), url: f.homepage };
@@ -372,11 +372,11 @@ export async function getBreadthData(env: ProviderEnv): Promise<BreadthResult> {
     SECTOR_ETFS.map((s) => fetchPolygonDaily(s.ticker, isoDaysAgo(50), today(), key)),
   );
   const rows: SectorRow[] = SECTOR_ETFS.map((s, i) => {
-    const r = settled[i];
+    const r = settled[i]!;
     if (r.status !== "fulfilled") return { ticker: s.ticker, sector: s.sector.en, last: null, d1: null, d5: null, m1: null, asOf: null };
     const b = r.value;
     const n = b.length;
-    const ch = (k: number) => (n > k ? (b[n - 1].close / b[n - 1 - k].close - 1) * 100 : null);
+    const ch = (k: number) => (n > k ? (b[n - 1]!.close / b[n - 1 - k]!.close - 1) * 100 : null);
     return { ticker: s.ticker, sector: s.sector.en, last: b[n - 1]?.close ?? null, d1: ch(1), d5: ch(5), m1: ch(21), asOf: b[n - 1]?.date ?? null };
   });
   const ok = settled.filter((s) => s.status === "fulfilled").length;
@@ -470,7 +470,7 @@ export async function getProviderStatusData(env: ProviderEnv): Promise<ProviderS
       coverage: "finnhub_coverage",
     },
     ...RSS_FEEDS.map((f, i): ProviderStatus => {
-      const r = feeds[i];
+      const r = feeds[i]!;
       return {
         id: f.id,
         name: f.name,

@@ -15,9 +15,9 @@ export function Sparkline({ values, className }: { values: number[]; className?:
   const max = Math.max(...values);
   const span = max - min || 1;
   const pts = values.map((v, i) => `${(i / (values.length - 1)) * 100},${28 - ((v - min) / span) * 26}`).join(" ");
-  const up = values[values.length - 1] >= values[0];
+  const up = (values[values.length - 1] ?? 0) >= (values[0] ?? 0);
   return (
-    <svg viewBox="0 0 100 30" preserveAspectRatio="none" className={cn("h-8 w-full", className)} dir="ltr" aria-hidden>
+    <svg viewBox="0 0 100 30" preserveAspectRatio="none" className={cn("h-8 w-full", className)} aria-hidden>
       <polyline
         points={pts}
         fill="none"

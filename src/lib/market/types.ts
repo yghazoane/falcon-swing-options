@@ -37,20 +37,20 @@ export type InstrumentId =
 
 export interface Bar {
   date: string; // YYYY-MM-DD
-  open?: number;
-  high?: number;
-  low?: number;
+  open?: number | undefined;
+  high?: number | undefined;
+  low?: number | undefined;
   close: number;
-  volume?: number;
+  volume?: number | undefined;
 }
 
 export interface SourceInfo {
   status: DataStatus;
   provider: string; // provider id, e.g. "fred_public"
   providerName: string;
-  sourceUrl?: string;
+  sourceUrl?: string | undefined;
   /** Short machine-safe reason, shown in UI when status is error/unavailable. */
-  note?: string;
+  note?: string | undefined;
 }
 
 export interface Quote extends SourceInfo {
@@ -129,7 +129,7 @@ export interface FeedStatus {
   name: string;
   status: DataStatus;
   count: number;
-  note?: string;
+  note?: string | undefined;
   url: string;
 }
 
@@ -145,7 +145,7 @@ export interface MacroResult {
   fedTarget: FedTarget;
   fomcCommunications: NewsItem[];
   fomcStatus: DataStatus;
-  calendar: { status: DataStatus; note?: string; events: CalendarEvent[] };
+  calendar: { status: DataStatus; note?: string | undefined; events: CalendarEvent[] };
 }
 
 export interface SectorRow {
@@ -174,7 +174,7 @@ export interface ProviderStatus {
   status: DataStatus;
   implemented: boolean;
   lastDataAt: string | null;
-  note?: string;
+  note?: string | undefined;
   url: string;
   coverage: string;
 }
