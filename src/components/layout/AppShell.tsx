@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, BarChart3, Database, Globe2, Landmark, LineChart, Newspaper, RotateCw, ShieldAlert } from "lucide-react";
+import { Activity, Globe2, RotateCw, ShieldAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useNow } from "@/components/market/QuoteCard";
@@ -12,14 +12,8 @@ import { getMarketSession } from "@/lib/market/session";
 import { overviewQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
-const NAV: { to: "/" | "/breadth" | "/macro" | "/news" | "/history" | "/sources"; key: DictKey; icon: typeof Activity }[] = [
-  { to: "/", key: "nav.overview", icon: Activity },
-  { to: "/breadth", key: "nav.breadth", icon: BarChart3 },
-  { to: "/macro", key: "nav.macro", icon: Landmark },
-  { to: "/news", key: "nav.news", icon: Newspaper },
-  { to: "/history", key: "nav.history", icon: LineChart },
-  { to: "/sources", key: "nav.sources", icon: Database },
-];
+// Only pages that exist are listed; remaining sections are added as their pages are built.
+const NAV: { to: "/"; key: DictKey; icon: typeof Activity }[] = [{ to: "/", key: "nav.overview", icon: Activity }];
 
 function FalconMark() {
   return (
@@ -73,7 +67,7 @@ function ConnectionPill() {
   const key: DictKey = isPending ? "conn.checking" : `conn.${state}`;
   return (
     <Link
-      to="/sources"
+      to="/"
       className={cn(
         "hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium md:inline-flex",
         state === "ok" && "border-status-eod/40 text-status-eod",
@@ -193,7 +187,7 @@ function CoverageBanner() {
           <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
             {t("topbar.realtimeOff")}
           </span>
-          <Link to="/sources" className="font-medium text-primary hover:underline">
+          <Link to="/" className="font-medium text-primary hover:underline">
             {t("banner.cta")}
           </Link>
         </div>
