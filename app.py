@@ -7,7 +7,8 @@ from falcon.context import summarize_market_context
 from falcon.fibonacci import latest_fibonacci_levels
 from falcon.indicators import add_indicators
 from falcon.market import load_history
-from falcon.regime import market_dashboard, compare_timeframes
+from falcon.regime import market_dashboard
+from falcon.multi_timeframe import load_multi_timeframe
 from falcon.scoring import describe_confluence
 from falcon.structure import describe_market_structure
 from falcon.universe import load_us_equity_universe
@@ -61,11 +62,22 @@ with tab_market:
     show_table(dash["sectors"], "صناديق القطاعات")
     show_table(dash["macro"], "متغيرات كلية بديلة")
     st.info("هذه الرموز بدائل متابعة وليست قياسات مباشرة لكل مؤشر اقتصادي. لا توجد في هذه النسخة تغذية أخبار فدرالية أو تقويم اقتصادي آلي؛ لذلك لا نعرض عناوين أو أحداثاً غير موثقة.")
-    st.subheader("توافق الأطر الزمنية")
-    with st.spinner("مقارنة اليومي والساعة و4 ساعات المشتقة..."):
-        mtf = compare_timeframes(symbol)
-    st.dataframe(pd.DataFrame(mtf), use_container_width=True, hide_index=True)
-    st.caption("إطار 4 ساعات مشتق بتجميع شموع الساعة، وقد تختلف حدوده عن جلسات السوق ومصدر بيانات أصلي 4H.")
+    st.subheader("قراءة فنية متعددة الأطر الزمنية")
+    with st.spinner("تحليل اليومي والساعة و4 ساعات المشتقة..."):
+        mtf_rows, mtf_alignment = load_multi_timeframe(symbol)
+    st.metric("ملخص توافق الأطر", mtf_alignment["label"])
+    st.caption(mtf_alignment["note"])
+    mtf_table = pd.DataFrame(mtf_rows)[[
+        "timeframe", "trend", "momentum", "macd_state", "volume_state",
+        "structure", "structure_event", "close", "rsi14", "bars", "source"
+    ]].rename(columns={
+        "timeframe": "الإطار", "trend": "الاتجاه", "momentum": "الزخم",
+        "macd_state": "MACD", "volume_state": "الحجم", "structure": "هيكل السوق",
+        "structure_event": "حدث الهيكل", "close": "الإغلاق", "rsi14": "RSI 14",
+        "bars": "عدد الشموع", "source": "مصدر الإطار"
+    })
+    st.dataframe(mtf_table, use_container_width=True, hide_index=True)
+    st.caption("إطار 4 ساعات مشتق من شموع الساعة وليس إطاراً أصلياً من المزود. المقارنة وصفية، وتتجاهل الأطر التي لا تتوفر لها بيانات كافية.")
 with tab_universe:
     st.subheader("دليل رموز الأسهم المدرجة")
     st.caption("يتم تحميل دليل Nasdaq Trader لقوائم Nasdaq والأسواق الأخرى، مع استبعاد رموز الاختبار. لا يشمل هذا الدليل جميع أوراق OTC ولا يعني أن كل رمز له بيانات تاريخية متاحة.")
