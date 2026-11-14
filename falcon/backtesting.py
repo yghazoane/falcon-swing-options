@@ -92,17 +92,14 @@ def _select_non_overlapping(observations: pd.DataFrame) -> pd.DataFrame:
     return ordered.loc[selected_indices].sort_values("signal_time").copy()
 
 
-def _metrics(returns: pd.Series) -> dict[str, Any]:
-    """Trade-level metrics; cumulative and drawdown metrics assume sequential trades."""
+def _observation_metrics(returns: pd.Series) -> dict[str, Any]:
+    """Per-signal descriptive statistics; intentionally no portfolio curve."""
     values = pd.to_numeric(returns, errors="coerce").dropna()
     if values.empty:
         return {
             "observations": 0, "win_rate_pct": None, "mean_return_pct": None,
-            "median_return_pct": None, "cumulative_return_pct": None,
-            "max_drawdown_pct": None, "profit_factor": None,
+            "median_return_pct": None, "profit_factor": None,
         }
-    equity = (1 + values).cumprod()
-    drawdown = equity / equity.cummax() - 1
     gains = values[values > 0].sum()
     losses = abs(values[values < 0].sum())
     factor = float(gains / losses) if losses > 0 else (None if gains == 0 else float("inf"))
@@ -111,7 +108,31 @@ def _metrics(returns: pd.Series) -> dict[str, Any]:
         "win_rate_pct": float((values > 0).mean() * 100),
         "mean_return_pct": float(values.mean() * 100),
         "median_return_pct": float(values.median() * 100),
-        "cumulative_return_pct": float((equity.iloc[-1] - 1) * 100),
+        "profit_factor": factor,
+    }
+
+
+def _metrics(returns: pd.Series) -> dict[str, Any]:
+    """Sequential fixed-notional trade metrics; no compounding or reinvestment assumption."""
+    values = pd.to_numeric(returns, errors="coerce").dropna()
+    if values.empty:
+        return {
+            "observations": 0, "win_rate_pct": None, "mean_return_pct": None,
+            "median_return_pct": None, "cumulative_return_pct": None,
+            "max_drawdown_pct": None, "profit_factor": None,
+        }
+    pnl_curve = values.cumsum()
+    running_peak = pnl_curve.cummax().clip(lower=0)
+    drawdown = pnl_curve - running_peak
+    gains = values[values > 0].sum()
+    losses = abs(values[values < 0].sum())
+    factor = float(gains / losses) if losses > 0 else (None if gains == 0 else float("inf"))
+    return {
+        "observations": int(len(values)),
+        "win_rate_pct": float((values > 0).mean() * 100),
+        "mean_return_pct": float(values.mean() * 100),
+        "median_return_pct": float(values.median() * 100),
+        "cumulative_return_pct": float(pnl_curve.iloc[-1] * 100),
         "max_drawdown_pct": float(drawdown.min() * 100),
         "profit_factor": factor,
     }
@@ -146,8 +167,8 @@ def walk_forward_validate(observations: pd.DataFrame, train_fraction: float = 0.
         "test_non_overlapping": test_portfolio,
         "split_time": str(test_start),
         "purged_training_observations": int(raw_split - len(train)),
-        "train_signal_metrics": _metrics(train["strategy_return"]),
-        "test_signal_metrics": _metrics(test["strategy_return"]),
+        "train_signal_metrics": _observation_metrics(train["strategy_return"]),
+        "test_signal_metrics": _observation_metrics(test["strategy_return"]),
         "train_metrics": _metrics(train_portfolio["strategy_return"]),
         "test_metrics": _metrics(test_portfolio["strategy_return"]),
         "method_note": (
