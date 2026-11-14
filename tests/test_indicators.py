@@ -4,6 +4,7 @@ from falcon.indicators import add_indicators
 from falcon.structure import add_confirmed_pivots
 from falcon.fibonacci import latest_fibonacci_levels
 from falcon.regime import _trend, _pct_change
+from falcon.universe import parse_symbol_directories
 
 def sample_data():
     idx = pd.date_range("2024-01-01", periods=260, freq="B")
@@ -33,3 +34,9 @@ def test_trend_classification_on_rising_series():
 def test_pct_change_requires_enough_history():
     assert _pct_change(pd.Series([10.0, 11.0]), 1) == pytest.approx(10.0)
     assert _pct_change(pd.Series([10.0]), 1) is None
+
+def test_symbol_directory_parser_excludes_test_issues_and_normalizes_symbols():
+    nasdaq = "Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares\nAAA|Alpha Inc|Q|N|N|100|N|N\nBAD|Test Corp|Q|Y|N|100|N|N\nFile Creation Time: now|||||||"
+    other = "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol\nBRK.B|Berkshire Class B|N|BRK.B|N|100|N|BRK.B\nFile Creation Time: now|||||||"
+    result = parse_symbol_directories(nasdaq, other)
+    assert result["symbol"].tolist() == ["AAA", "BRK-B"]

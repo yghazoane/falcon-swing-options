@@ -23,6 +23,7 @@ For a hosted deployment, add the same `app_password` key through the host's priv
 ## Current modules
 
 - Market overview: SPY, QQQ, DIA, IWM and VIX
+- Searchable Nasdaq Trader symbol directory for Nasdaq and other listed exchanges (not OTC-complete)
 - Sector ETF snapshots and macro proxy dashboard
 - Daily/hourly comparison; 4-hour candles are resampled from hourly bars
 - EMA 20/50/200, RSI 14, MACD and ATR 14

@@ -10,6 +10,7 @@ from falcon.market import load_history
 from falcon.regime import market_dashboard, compare_timeframes
 from falcon.scoring import describe_confluence
 from falcon.structure import describe_market_structure
+from falcon.universe import load_us_equity_universe
 
 st.set_page_config(page_title="Falcon Swing Options", page_icon="🦅", layout="wide")
 require_password()
@@ -41,7 +42,7 @@ structure = describe_market_structure(frame, pivot_window)
 fib = latest_fibonacci_levels(frame, pivot_window)
 last = frame.iloc[-1]
 
-tab_market, tab_asset, tab_options, tab_method = st.tabs(["السوق العام", "تحليل الرمز", "مفاهيم الخيارات", "المنهجية والبيانات"])
+tab_market, tab_universe, tab_asset, tab_options, tab_method = st.tabs(["السوق العام", "دليل الأسهم الأمريكية", "تحليل الرمز", "مفاهيم الخيارات", "المنهجية والبيانات"])
 with tab_market:
     st.subheader("مؤشرات السوق الرئيسية")
     with st.spinner("قراءة المؤشرات والقطاعات والمتغيرات الكلية..."):
@@ -60,6 +61,31 @@ with tab_market:
         mtf = compare_timeframes(symbol)
     st.dataframe(pd.DataFrame(mtf), use_container_width=True, hide_index=True)
     st.caption("إطار 4 ساعات مشتق بتجميع شموع الساعة، وقد تختلف حدوده عن جلسات السوق ومصدر بيانات أصلي 4H.")
+with tab_universe:
+    st.subheader("دليل رموز الأسهم المدرجة")
+    st.caption("يتم تحميل دليل Nasdaq Trader لقوائم Nasdaq والأسواق الأخرى، مع استبعاد رموز الاختبار. لا يشمل هذا الدليل جميع أوراق OTC ولا يعني أن كل رمز له بيانات تاريخية متاحة.")
+    if st.button("تحديث دليل الرموز"):
+        load_us_equity_universe.clear()
+    try:
+        with st.spinner("تحميل دليل الرموز..."):
+            universe = load_us_equity_universe()
+        st.metric("عدد الرموز المدرجة المتاحة في الدليل", f"{len(universe):,}")
+        query = st.text_input("ابحث بالرمز أو اسم الشركة", key="universe_search").strip().upper()
+        if query:
+            matches = universe[
+                universe["symbol"].str.contains(query, case=False, na=False)
+                | universe["security_name"].str.contains(query, case=False, na=False)
+            ].head(100)
+        else:
+            matches = universe.head(100)
+        st.dataframe(matches, use_container_width=True, hide_index=True)
+        if not matches.empty:
+            chosen = st.selectbox("اختر رمزاً للتحليل", matches["symbol"].tolist())
+            if st.button("استخدام الرمز في التحليل"):
+                st.session_state["selected_universe_symbol"] = chosen
+                st.success(f"تم اختيار {chosen}. أدخله في حقل الرمز في الشريط الجانبي.")
+    except Exception as exc:
+        st.warning(f"تعذر تحميل دليل الرموز حالياً: {exc}. يمكنك إدخال الرمز يدوياً.")
 with tab_asset:
     st.subheader(f"{symbol} — السعر والمؤشرات")
     a, b, c, d = st.columns(4)
