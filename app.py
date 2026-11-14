@@ -24,6 +24,9 @@ with st.sidebar:
     interval = st.selectbox("الإطار الأساسي", ["1d", "1wk", "1h"], index=0)
     pivot_window = st.slider("حساسية المحاور (شموع)", 2, 8, 3)
     st.caption("المصدر الحالي: Yahoo Finance عبر yfinance. لا توجد ضمانة للتوقيت الفوري أو اكتمال التغطية.")
+    if st.button("تحديث جميع بيانات السوق", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
 
 if not symbol:
     st.info("أدخل رمزاً لعرض البيانات التاريخية.")
@@ -42,6 +45,7 @@ frame = add_indicators(raw)
 structure = describe_market_structure(frame, pivot_window)
 fib = latest_fibonacci_levels(frame, pivot_window)
 last = frame.iloc[-1]
+last_bar_time = frame.index[-1]
 
 tab_market, tab_universe, tab_asset, tab_options, tab_method = st.tabs(["السوق العام", "دليل الأسهم الأمريكية", "تحليل الرمز", "مفاهيم الخيارات", "المنهجية والبيانات"])
 with tab_market:
@@ -89,6 +93,7 @@ with tab_universe:
         st.warning(f"تعذر تحميل دليل الرموز حالياً: {exc}. يمكنك إدخال الرمز يدوياً.")
 with tab_asset:
     st.subheader(f"{symbol} — السعر والمؤشرات")
+    st.caption(f"آخر شمعة أعادها المصدر: {last_bar_time} · قد تكون البيانات متأخرة أو غير مكتملة.")
     a, b, c, d = st.columns(4)
     a.metric("آخر إغلاق", f"{last['Close']:,.2f}")
     b.metric("EMA 20", f"{last['EMA20']:,.2f}" if pd.notna(last["EMA20"]) else "—")
