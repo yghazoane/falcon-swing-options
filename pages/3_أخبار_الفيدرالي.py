@@ -20,6 +20,9 @@ except Exception as exc:
     st.stop()
 
 st.caption(f"آخر جلب من المصدر: {result['retrieved_at_utc']}")
+st.caption(f"المصدر المستخدم: {result.get('source_label', 'Federal Reserve RSS')}")
+if result.get("notice"):
+    st.info(result["notice"])
 items = result["items"]
 if not items:
     st.info("لم يعرض الموجز عناصر حالياً.")
