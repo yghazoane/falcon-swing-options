@@ -7,7 +7,9 @@ from falcon.context import summarize_market_context
 from falcon.fibonacci import latest_fibonacci_levels
 from falcon.indicators import add_indicators
 from falcon.market import load_history
-from falcon.regime import market_dashboard
+from falcon.market_intelligence import build_market_intelligence
+from falcon.fed_news import load_fed_news, FedFeedError
+from falcon.news_impact import classify_news_impact
 from falcon.multi_timeframe import load_multi_timeframe
 from falcon.scoring import describe_confluence
 from falcon.structure import describe_market_structure
@@ -50,18 +52,51 @@ last_bar_time = frame.index[-1]
 
 tab_market, tab_universe, tab_asset, tab_options, tab_method = st.tabs(["السوق العام", "دليل الأسهم الأمريكية", "تحليل الرمز", "مفاهيم الخيارات", "المنهجية والبيانات"])
 with tab_market:
-    st.subheader("مؤشرات السوق الرئيسية")
-    with st.spinner("قراءة المؤشرات والقطاعات والمتغيرات الكلية..."):
-        dash = market_dashboard()
-    def show_table(items, title):
-        st.markdown(f"**{title}**")
-        df = pd.DataFrame(items)
-        if not df.empty:
-            st.dataframe(df, use_container_width=True, hide_index=True)
-    show_table(dash["indices"], "المؤشرات وصناديق المتابعة")
-    show_table(dash["sectors"], "صناديق القطاعات")
-    show_table(dash["macro"], "متغيرات كلية بديلة")
-    st.info("هذه الرموز بدائل متابعة وليست قياسات مباشرة لكل مؤشر اقتصادي. لا توجد في هذه النسخة تغذية أخبار فدرالية أو تقويم اقتصادي آلي؛ لذلك لا نعرض عناوين أو أحداثاً غير موثقة.")
+    st.subheader("محرك قراءة السوق العام")
+    with st.spinner("تجميع المؤشرات والتقلب والقطاعات والمتغيرات الكلية..."):
+        intelligence = build_market_intelligence()
+    m1, m2, m3 = st.columns(3)
+    m1.metric("حالة السوق الوصفية", intelligence["regime"])
+    m2.metric("ثقة التصنيف", intelligence["confidence"])
+    m3.metric("آخر تاريخ بيانات متاح", intelligence["latest_data_date"] or "غير متاح")
+    st.caption(intelligence["method_note"])
+    st.info(intelligence["data_note"])
+    st.markdown("**المؤشرات الرئيسية وبدائل المتابعة**")
+    indices_df = pd.DataFrame(intelligence["indices"])
+    st.dataframe(indices_df, use_container_width=True, hide_index=True)
+    st.markdown("**مشاركة القطاعات والقوة النسبية مقابل SPY خلال 20 جلسة**")
+    participation = intelligence["sector_participation"]
+    st.caption(
+        f"القطاعات المتاحة: {participation['available_sectors']} · "
+        f"موجبة خلال 20 جلسة: {participation['positive_20d']} · "
+        f"سالبة: {participation['negative_20d']}"
+    )
+    st.dataframe(pd.DataFrame(intelligence["sectors"]), use_container_width=True, hide_index=True)
+    st.markdown("**المتغيرات الكلية البديلة**")
+    st.dataframe(pd.DataFrame(intelligence["macro"]), use_container_width=True, hide_index=True)
+    st.markdown("**أخبار الاحتياطي الفيدرالي وتصنيف أثرها المحتمل**")
+    try:
+        news_payload = load_fed_news()
+        st.caption(f"المصدر: {news_payload.get('source_label')} · جلبت في: {news_payload.get('retrieved_at_utc')}")
+        if news_payload.get("notice"):
+            st.warning(str(news_payload["notice"]))
+        news_rows = []
+        for item in news_payload.get("items", [])[:8]:
+            impact = classify_news_impact(item)
+            news_rows.append({
+                "تاريخ النشر": item.get("published") or "غير متاح",
+                "الخبر": item.get("title", ""),
+                "الأثر المحتمل": impact["label"],
+                "الثقة": impact["confidence"],
+                "سبب التصنيف": impact["reason"],
+                "الرابط": item.get("link", ""),
+            })
+        if news_rows:
+            st.dataframe(pd.DataFrame(news_rows), use_container_width=True, hide_index=True)
+        else:
+            st.caption("لا توجد عناوين متاحة حالياً.")
+    except FedFeedError as exc:
+        st.warning(f"تعذر تحميل أخبار الفيدرالي حالياً: {exc}")
     st.subheader("قراءة فنية متعددة الأطر الزمنية")
     with st.spinner("تحليل اليومي والساعة و4 ساعات المشتقة..."):
         mtf_rows, mtf_alignment = load_multi_timeframe(symbol)
