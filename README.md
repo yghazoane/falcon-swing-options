@@ -26,7 +26,8 @@ For Streamlit Community Cloud or another host, add `app_password` through the ho
 
 ## Current modules
 
-- Market overview: SPY, QQQ, DIA, IWM and VIX
+- Direct S&P 500 and Nasdaq-100 index symbols alongside clearly labeled SPY/QQQ ETF proxies
+- Market overview: DIA, IWM and VIX
 - Searchable Nasdaq Trader symbol directory for Nasdaq and other listed exchanges (not OTC-complete)
 - Sector ETF snapshots and macro proxy dashboard
 - Daily/hourly comparison; 4-hour candles are resampled from hourly bars
