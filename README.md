@@ -8,18 +8,26 @@ Private, educational Streamlit workspace for studying U.S. market data, technica
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
 pip install -r requirements.txt
+mkdir -p .streamlit
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+```
+
+Edit `.streamlit/secrets.toml` and replace the sample value with a strong, unique password. Never commit that file or share the password. Then start the app:
+
+```bash
 streamlit run app.py
 ```
+
+For a hosted deployment, add the same `app_password` key through the host's private Streamlit Secrets interface. The app fails closed when the secret is missing.
 
 ## Current modules
 
 - Market overview: SPY, QQQ, DIA, IWM and VIX
-- Sector ETF snapshots and relative market context
-- Macro proxies: Treasury yield, US Dollar, gold and crude oil
+- Sector ETF snapshots and macro proxy dashboard
 - Daily/hourly comparison; 4-hour candles are resampled from hourly bars
 - EMA 20/50/200, RSI 14, MACD and ATR 14
 - Confirmed swing pivots and Fibonacci retracement references
-- GitHub Actions compilation and unit tests
+- Password gate, five-minute data cache, GitHub Actions compilation and unit tests
 
 ## Data limitations
 
