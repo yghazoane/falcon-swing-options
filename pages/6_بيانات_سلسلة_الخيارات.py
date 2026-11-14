@@ -6,15 +6,22 @@ import streamlit as st
 from falcon.auth import require_password
 from falcon.market import load_history
 from falcon.options_data import get_option_expirations, load_options_chain
+from falcon.contract_screening import rank_contract_data_quality
 
 st.set_page_config(page_title="Falcon · بيانات سلسلة الخيارات", page_icon="🦅", layout="wide")
 require_password()
-st.title("بيانات سلسلة الخيارات")
-st.caption("عرض بحثي للبيانات التي يعيدها مزود خارجي؛ لا يمثل أسعاراً مضمونة التنفيذ ولا يصدر توصيات.")
+st.title("محرك فرز جودة بيانات سلسلة الخيارات")
+st.caption("فرز بحثي افتراضي لخصائص البيانات والسيولة المنشورة؛ لا يقيّم اتجاه العقد ولا يصدر توصية شراء أو تنفيذ.")
 
 with st.sidebar:
     symbol = st.text_input("رمز الأصل", value="SPY").strip().upper()
     rate_pct = st.number_input("معدل الفائدة المفترض لحساب Greeks %", min_value=-5.0, max_value=30.0, value=4.0, step=0.25)
+    st.subheader("مرشحات البحث الافتراضي")
+    min_premium, max_premium = st.slider("نطاق السعر الوسطي بالدولار", 0.0, 20.0, (0.0, 4.0), 0.1)
+    max_spread = st.slider("أقصى سبريد % من السعر الوسطي", 1, 100, 20)
+    min_volume = st.number_input("أقل حجم تداول منشور", min_value=0, value=10, step=10)
+    min_oi = st.number_input("أقل Open Interest منشور", min_value=0, value=100, step=50)
+    min_dte, max_dte = st.slider("نطاق الأيام حتى الانتهاء", 0, 180, (7, 60))
     refresh = st.button("تحديث سلسلة الخيارات", use_container_width=True)
 
 if not symbol:
@@ -57,41 +64,69 @@ except Exception as exc:
 
 st.warning(
     "مصدر البيانات: Yahoo Finance عبر yfinance. وقت الاسترجاع أدناه هو وقت جلب البيانات وليس وقت آخر تحديث من البورصة. "
-    "Bid/Ask وVolume وOpen Interest قد تكون متأخرة أو ناقصة؛ تحقق من مزود مرخص قبل الاعتماد عليها."
+    "Bid/Ask وVolume وOpen Interest قد تكون متأخرة أو ناقصة؛ لا تعتبرها أسعاراً مضمونة التنفيذ."
 )
 st.caption(
     f"وقت الاسترجاع UTC: {snapshot['retrieved_at_utc']} · "
-    f"الانتهاء: {snapshot['expiry']} · DTE التقريبي: {snapshot['days_to_expiry']} · "
+    f"الانتهاء: {snapshot['expiry']} · DTE التقريبي: {snapshot['days_to_expiry']:.2f} · "
     f"المصدر: {snapshot['provider']}"
 )
+st.caption(snapshot["spot_reference_warning"])
+st.caption(snapshot["model_assumptions"])
 
 columns = [
     "contractSymbol", "strike", "lastPrice", "bid", "ask", "mid",
     "spread_pct_mid", "volume", "openInterest", "impliedVolatility",
-    "delta", "gamma", "theta_per_day", "vega_per_1pct",
+    "daysToExpiry", "delta", "gamma", "theta_per_day", "vega_per_1pct",
+    "data_quality_score", "screen_status",
 ]
 labels = {
     "contractSymbol": "رمز العقد", "strike": "Strike", "lastPrice": "آخر سعر",
     "bid": "Bid", "ask": "Ask", "mid": "Mid تقريبي",
     "spread_pct_mid": "السبريد % من Mid", "volume": "الحجم",
     "openInterest": "Open Interest", "impliedVolatility": "IV",
-    "delta": "Delta نموذجي", "gamma": "Gamma نموذجي",
-    "theta_per_day": "Theta/يوم", "vega_per_1pct": "Vega/1% IV",
+    "daysToExpiry": "DTE", "delta": "Delta نموذجي",
+    "gamma": "Gamma نموذجي", "theta_per_day": "Theta/يوم",
+    "vega_per_1pct": "Vega/1% IV", "data_quality_score": "درجة جودة البيانات",
+    "screen_status": "نتيجة المرشحات",
 }
 
-for key, title in (("calls", "CALL — بيانات المصدر"), ("puts", "PUT — بيانات المصدر")):
+screened = {}
+for key, title in (("calls", "CALL — فرز جودة البيانات"), ("puts", "PUT — فرز جودة البيانات")):
+    frame = rank_contract_data_quality(
+        snapshot[key],
+        min_premium=min_premium,
+        max_premium=max_premium,
+        max_spread_pct=float(max_spread),
+        min_volume=int(min_volume),
+        min_open_interest=int(min_oi),
+        min_days_to_expiry=float(min_dte),
+        max_days_to_expiry=float(max_dte),
+    )
+    screened[key] = frame
     st.subheader(title)
-    frame = snapshot[key].copy()
     if frame.empty:
         st.info("لا توجد صفوف أعادها المصدر لهذا النوع.")
         continue
+    matched = int(frame["screen_status"].eq("مطابق لمرشحات جودة البيانات").sum())
+    st.metric("عدد الصفوف المطابقة لمرشحات جودة البيانات", matched)
     st.dataframe(frame[columns].rename(columns=labels), use_container_width=True, hide_index=True)
+    with st.expander("أسباب التقييم لكل صف"):
+        st.dataframe(
+            frame[["contractSymbol", "data_quality_score", "screen_reasons"]].rename(columns={
+                "contractSymbol": "رمز العقد",
+                "data_quality_score": "درجة جودة البيانات",
+                "screen_reasons": "تفاصيل تحقق المرشحات",
+            }),
+            use_container_width=True,
+            hide_index=True,
+        )
     st.caption(
         "Greeks والقيمة النظرية محسوبة محلياً بنموذج Black–Scholes باستخدام السعر المرجعي وIV المعاد من المصدر؛ "
         "ليست Greeks منشورة من البورصة، ولا تأخذ توزيعات الأرباح أو خصائص التسوية والتمرين المبكر في الحسبان."
     )
 
 st.info(
-    "هذه الصفحة تعرض سلسلة بحثية للمقارنة والتحقق من جودة البيانات فقط. "
-    "لا ترتب العقود بغرض الشراء، ولا تحدد عقداً أو نقطة دخول أو أمر تنفيذ."
+    "درجة جودة البيانات تقيس اكتمال العرض والسبريد والحجم وOpen Interest وIV وDTE والسعر الوسطي وفق الحدود التي تختارها. "
+    "لا تقيس اتجاه السوق أو احتمالية الربح أو ملاءمة العقد للشراء؛ النتائج قائمة مراقبة افتراضية للبحث والمحاكاة فقط."
 )
