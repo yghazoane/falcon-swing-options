@@ -76,7 +76,8 @@ def test_market_intelligence_uses_etf_proxy_only_when_direct_index_missing(monke
 
     monkeypatch.setattr("falcon.market_intelligence._snapshot", fake_snapshot)
     result = build_market_intelligence()
-    assert result["regime"] == "سوق مختلط / انتقالي"
+    assert result["regime"] == "ميل داعم للمخاطرة"
+    assert result["confidence"] == "متوسطة"
     assert result["selected_benchmarks"][0]["symbol"] == "SPY"
     assert result["selected_benchmarks"][0]["basis"] == "بديل ETF عند غياب المؤشر المباشر"
     assert result["selected_benchmarks"][1]["symbol"] == "^NDX"
