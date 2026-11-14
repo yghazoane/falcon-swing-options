@@ -11,6 +11,8 @@ from falcon.market_intelligence import build_market_intelligence
 from falcon.multi_timeframe import load_multi_timeframe
 from falcon.fed_news import FedFeedError, load_fed_news
 from falcon.news_impact import classify_news_impact
+from falcon.stock_analysis import analyze_stock_frame
+from falcon.research_ranking import rank_paper_candidates
 
 st.set_page_config(page_title="Falcon · بيانات سلسلة الخيارات", page_icon="🦅", layout="wide")
 require_password()
@@ -79,10 +81,16 @@ st.caption(snapshot["spot_reference_warning"])
 st.caption(snapshot["model_assumptions"])
 
 st.subheader("سياق السوق والأصل الأساسي")
+market_context = None
+timeframe_rows = []
+timeframe_alignment = {"label": "غير متاح"}
+stock_report = None
 try:
     with st.spinner("قراءة اتجاه المؤشرات والأطر الزمنية..."):
         market_context = build_market_intelligence()
         timeframe_rows, timeframe_alignment = load_multi_timeframe(symbol)
+        stock_history = load_history(symbol, period="1y", interval="1d")
+        stock_report = analyze_stock_frame(stock_history)
     context_cols = st.columns(3)
     context_cols[0].metric("حالة السوق العامة", market_context["regime"])
     context_cols[1].metric("درجة ثقة التصنيف", market_context["confidence"])
@@ -103,6 +111,13 @@ try:
             hide_index=True,
         )
     st.caption(market_context["method_note"])
+    st.markdown("**ملخص التحليل الفني للأصل**")
+    st.metric("الحالة الفنية", stock_report["descriptive_state"])
+    st.caption(
+        f"آخر شمعة: {stock_report['as_of']} · "
+        f"مكونات إيجابية: {stock_report['bullish_components']} · "
+        f"مكونات سلبية: {stock_report['bearish_components']}"
+    )
     st.markdown("**آخر أخبار الاحتياطي الفيدرالي**")
     try:
         fed_payload = load_fed_news()
@@ -176,6 +191,57 @@ for key, title in (("calls", "CALL — فرز جودة البيانات"), ("put
         "Greeks والقيمة النظرية محسوبة محلياً بنموذج Black–Scholes باستخدام السعر المرجعي وIV المعاد من المصدر؛ "
         "ليست Greeks منشورة من البورصة، ولا تأخذ توزيعات الأرباح أو خصائص التسوية والتمرين المبكر في الحسبان."
     )
+
+
+st.divider()
+st.subheader("قائمة المرشحين للبحث والمحاكاة")
+if market_context is not None and stock_report is not None:
+    candidates = rank_paper_candidates(
+        screened.get("calls", pd.DataFrame()),
+        screened.get("puts", pd.DataFrame()),
+        market_context=market_context,
+        stock_report=stock_report,
+        timeframe_alignment=timeframe_alignment,
+        top_n=10,
+    )
+    if candidates.empty:
+        st.info("لا توجد عقود اجتازت جميع مرشحات جودة البيانات مع توفر مكونات التصنيف الحالية.")
+    else:
+        candidate_columns = [
+            "option_type", "contractSymbol", "mid", "strike", "daysToExpiry",
+            "delta", "spread_pct_mid", "volume", "openInterest",
+            "research_fit_score", "research_fit_label",
+        ]
+        candidate_labels = {
+            "option_type": "النوع", "contractSymbol": "رمز العقد",
+            "mid": "Mid تقريبي", "strike": "Strike",
+            "daysToExpiry": "DTE", "delta": "Delta نموذجي",
+            "spread_pct_mid": "السبريد %", "volume": "الحجم",
+            "openInterest": "Open Interest",
+            "research_fit_score": "درجة التوافق البحثي",
+            "research_fit_label": "وصف التوافق",
+        }
+        st.dataframe(
+            candidates[candidate_columns].rename(columns=candidate_labels),
+            use_container_width=True,
+            hide_index=True,
+        )
+        with st.expander("تفاصيل أسباب ترتيب كل مرشح"):
+            st.dataframe(
+                candidates[["contractSymbol", "option_type", "research_fit_reasons"]].rename(columns={
+                    "contractSymbol": "رمز العقد",
+                    "option_type": "النوع",
+                    "research_fit_reasons": "تفاصيل المكونات",
+                }),
+                use_container_width=True,
+                hide_index=True,
+            )
+        st.caption(
+            "درجة التوافق من 100 هي درجة مطابقة موزونة لمعايير البحث الحالية وليست احتمال نجاح أو ربح. "
+            "الترتيب لا يعني أن العقد مناسب للشراء، ولا يصدر أمراً أو توصية تنفيذ."
+        )
+else:
+    st.info("تعذر بناء قائمة الترتيب لأن بعض بيانات السوق أو التحليل الفني غير متاحة. لا يتم استنتاج اتجاه بديل.")
 
 st.info(
     "درجة جودة البيانات تقيس اكتمال العرض والسبريد والحجم وOpen Interest وIV وDTE والسعر الوسطي وفق الحدود التي تختارها. "
