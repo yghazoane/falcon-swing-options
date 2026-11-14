@@ -63,6 +63,15 @@ def _snapshot(symbol: str, label: str) -> dict[str, Any]:
         }
 
 
+def _select_benchmark(primary: dict[str, Any], proxy: dict[str, Any]) -> dict[str, Any] | None:
+    """Prefer the direct index; use its ETF only when direct index data is unavailable."""
+    if primary.get("status") == "available":
+        return {**primary, "basis": "مؤشر مباشر"}
+    if proxy.get("status") == "available":
+        return {**proxy, "basis": "بديل ETF عند غياب المؤشر المباشر"}
+    return None
+
+
 def build_market_intelligence() -> dict[str, Any]:
     """Build a descriptive cross-asset market snapshot; never a trade signal."""
     index_symbols = ("^GSPC", "^NDX", "SPY", "QQQ", "DIA", "IWM", "^VIX")
@@ -71,18 +80,26 @@ def build_market_intelligence() -> dict[str, Any]:
     macro = [_snapshot(symbol, label) for symbol, label in MACRO_PROXIES.items()]
 
     by_symbol = {row["symbol"]: row for row in indices}
+    benchmark_pairs = (
+        ("^GSPC", "SPY", "S&P 500"),
+        ("^NDX", "QQQ", "Nasdaq-100"),
+    )
+    selected_benchmarks = []
+    for direct_symbol, proxy_symbol, label in benchmark_pairs:
+        selected = _select_benchmark(by_symbol[direct_symbol], by_symbol[proxy_symbol])
+        if selected is not None:
+            selected_benchmarks.append({**selected, "benchmark": label})
+
     spy = by_symbol.get("SPY", {})
-    qqq = by_symbol.get("QQQ", {})
     vix = by_symbol.get("^VIX", {})
-    available_core = [row for row in (spy, qqq) if row.get("status") == "available"]
     vix_value = vix.get("last") if vix.get("status") == "available" else None
 
-    if len(available_core) < 2:
+    if len(selected_benchmarks) < 2:
         regime = "غير محسوم — بيانات المؤشرات غير مكتملة"
         confidence = "منخفضة"
     else:
-        bullish = all(row["above_ema50"] for row in available_core)
-        bearish = all(not row["above_ema50"] for row in available_core)
+        bullish = all(row["above_ema50"] for row in selected_benchmarks)
+        bearish = all(not row["above_ema50"] for row in selected_benchmarks)
         if bullish and vix_value is not None and vix_value < 20:
             regime, confidence = "ميل داعم للمخاطرة", "متوسطة"
         elif bearish and vix_value is not None and vix_value >= 25:
@@ -105,11 +122,17 @@ def build_market_intelligence() -> dict[str, Any]:
         )
 
     latest_dates = [row["as_of"] for row in indices + sectors + macro if row["as_of"]]
+    benchmark_basis = " · ".join(
+        f"{row['benchmark']}: {row['symbol']} ({row['basis']})"
+        for row in selected_benchmarks
+    )
     return {
         "regime": regime,
         "confidence": confidence,
         "vix_level": vix_value,
         "indices": indices,
+        "selected_benchmarks": selected_benchmarks,
+        "benchmark_basis": benchmark_basis,
         "sectors": sectors,
         "macro": macro,
         "sector_participation": {
@@ -119,12 +142,13 @@ def build_market_intelligence() -> dict[str, Any]:
         },
         "latest_data_date": max(latest_dates) if latest_dates else None,
         "method_note": (
-            "تصنيف وصفي قائم على SPY وQQQ مقارنة بمتوسط EMA50 ومستوى VIX. "
-            "حدود VIX (20 و25) قواعد تقريبية وليست حدوداً تنبؤية."
+            "التصنيف الوصفي يستخدم S&P 500 وNasdaq-100 المباشرين عند توفرهما، "
+            "ويستخدم SPY أو QQQ بديلاً عند تعذر المؤشر المباشر؛ لا يحتسب المؤشر وصندوقه مرتين. "
+            "تُقارن القراءة بمتوسط EMA50 مع سياق VIX. حدود VIX (20 و25) تقريبية وليست تنبؤية."
         ),
         "data_note": (
             "المصدر Yahoo Finance عبر yfinance؛ بيانات تاريخية وقد تكون متأخرة أو ناقصة. "
-            "SPY/QQQ بدائل متابعة للمؤشرات وليسا مطابقين لها. صناديق القطاعات مؤشرات مشاركة قطاعية "
-            "وليست قياساً كاملاً لاتساع جميع الأسهم."
+            "SPY/QQQ بدائل متابعة وليسا مطابقين للمؤشرين. صناديق القطاعات تقيس أداء مجموعة صناديق "
+            "ولا تمثل اتساعاً كاملاً لجميع الأسهم."
         ),
     }
