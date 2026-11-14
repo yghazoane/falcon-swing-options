@@ -9,6 +9,7 @@ from falcon.auth import require_password
 from falcon.context import summarize_market_context
 from falcon.indicators import add_indicators
 from falcon.market import load_history
+from falcon.multi_timeframe import load_multi_timeframe
 from falcon.options_lab import black_scholes, expiration_value
 from falcon.scoring import describe_confluence
 from falcon.structure import describe_market_structure
@@ -32,6 +33,7 @@ try:
     with st.spinner(f"تحميل بيانات {symbol} والسياق العام..."):
         raw = load_history(symbol, period=period, interval="1d")
         market_context = summarize_market_context()
+        timeframe_rows, timeframe_alignment = load_multi_timeframe(symbol)
 except Exception as exc:
     st.error(f"تعذر تحميل البيانات: {exc}")
     st.stop()
@@ -63,6 +65,18 @@ with left:
     st.markdown("**هيكل السوق**")
     st.write(f"{structure['trend']} — {structure['event']}")
     st.caption(structure["note"])
+    st.markdown("**توافق الأطر الزمنية للسهم**")
+    st.metric("ملخص الأطر", timeframe_alignment["label"])
+    st.caption(timeframe_alignment["note"])
+    timeframe_table = pd.DataFrame(timeframe_rows)[[
+        "timeframe", "trend", "momentum", "macd_state", "volume_state",
+        "structure", "rsi14", "bars", "source"
+    ]].rename(columns={
+        "timeframe": "الإطار", "trend": "الاتجاه", "momentum": "الزخم",
+        "macd_state": "MACD", "volume_state": "الحجم", "structure": "هيكل السوق",
+        "rsi14": "RSI 14", "bars": "عدد الشموع", "source": "مصدر البيانات"
+    })
+    st.dataframe(timeframe_table, use_container_width=True, hide_index=True)
 with right:
     st.markdown("**المتوسطات المتحركة**")
     fig = go.Figure()
