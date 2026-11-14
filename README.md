@@ -33,7 +33,7 @@ For Streamlit Community Cloud or another host, add `app_password` through the ho
 - Daily/hourly comparison; 4-hour candles are resampled from hourly bars
 - EMA 20/50/200, RSI 14, MACD, ATR 14 and VWAP
 - Candle-level approximate volume-by-price profile (explicitly not trade-level volume-at-price)
-- Confirmed swing pivots and Fibonacci retracement references
+- Confirmed swing pivots, simplified BOS/CHoCH descriptions, Fibonacci retracements and extensions
 - Password gate, five-minute data cache, GitHub Actions compilation and unit tests
 
 ## Data limitations
