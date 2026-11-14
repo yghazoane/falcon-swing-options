@@ -19,12 +19,7 @@ def describe_market_structure(data: pd.DataFrame, window: int = 3) -> dict[str, 
     last_close = float(df["Close"].iloc[-1]) if len(df) else float("nan")
     last_high = float(highs.iloc[-1]) if not highs.empty else None
     last_low = float(lows.iloc[-1]) if not lows.empty else None
-    if last_high is not None and last_close > last_high:
-        event = "إغلاق أعلى آخر قمة محورية مؤكدة"
-    elif last_low is not None and last_close < last_low:
-        event = "إغلاق أدنى آخر قاع محوري مؤكد"
-    else:
-        event = "لا يوجد تجاوز للإغلاق للمستويات المحورية الأخيرة"
+
     trend = "غير محدد"
     if len(highs) >= 2 and len(lows) >= 2:
         if highs.iloc[-1] > highs.iloc[-2] and lows.iloc[-1] > lows.iloc[-2]:
@@ -33,6 +28,20 @@ def describe_market_structure(data: pd.DataFrame, window: int = 3) -> dict[str, 
             trend = "قمم وقيعان هابطة"
         else:
             trend = "هيكل متداخل/عرضي"
-    return {"trend": trend, "event": event, "last_pivot_high": last_high,
-            "last_pivot_low": last_low, "annotated": df,
-            "note": "لا يتأكد المحور إلا بعد اكتمال الشموع اللاحقة المحددة؛ وقد تتأخر قراءته."}
+
+    event_type, event = "none", "لا يوجد تجاوز للإغلاق للمستويات المحورية الأخيرة"
+    if last_high is not None and last_close > last_high:
+        event_type = "choch_up" if trend == "قمم وقيعان هابطة" else "bos_up"
+        label = "CHoCH صاعد محتمل" if event_type == "choch_up" else "BOS صاعد محتمل"
+        event = f"{label}: إغلاق أعلى آخر قمة محورية مؤكدة"
+    elif last_low is not None and last_close < last_low:
+        event_type = "choch_down" if trend == "قمم وقيعان صاعدة" else "bos_down"
+        label = "CHoCH هابط محتمل" if event_type == "choch_down" else "BOS هابط محتمل"
+        event = f"{label}: إغلاق أدنى آخر قاع محوري مؤكد"
+
+    return {
+        "trend": trend, "event": event, "event_type": event_type,
+        "last_pivot_high": last_high, "last_pivot_low": last_low,
+        "annotated": df,
+        "note": "المحور يتأكد بعد اكتمال الشموع اللاحقة؛ وBOS/CHoCH هنا وصف آلي مبسط يعتمد الإغلاق، وليس حكماً نهائياً على هيكل السوق.",
+    }

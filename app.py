@@ -136,7 +136,11 @@ with tab_asset:
     st.subheader("مستويات Fibonacci المرجعية")
     if fib["levels"]:
         st.caption(f"اتجاه الساق: {fib['direction']} · النطاق: {fib['swing_low']:.2f} — {fib['swing_high']:.2f}")
+        st.markdown("**Retracement — ارتدادات**")
         st.dataframe([{"النسبة": k, "المستوى": round(v, 4)} for k, v in fib["levels"].items()], use_container_width=True, hide_index=True)
+        if fib.get("extensions"):
+            st.markdown("**Extensions — امتدادات**")
+            st.dataframe([{"النسبة": k, "المستوى": round(v, 4)} for k, v in fib["extensions"].items()], use_container_width=True, hide_index=True)
     else:
         st.info(fib["note"])
     with st.expander("آخر السجلات"):

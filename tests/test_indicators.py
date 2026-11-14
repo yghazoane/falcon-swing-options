@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import pytest
 from falcon.indicators import add_indicators
 from falcon.structure import add_confirmed_pivots
@@ -42,6 +43,15 @@ def test_pivots_wait_for_right_side_confirmation():
 def test_fibonacci_handles_insufficient_swings():
     result = latest_fibonacci_levels(sample_data(), window=3)
     assert result["levels"] == {}
+    assert result["extensions"] == {}
+
+def test_fibonacci_returns_retracements_and_extensions_for_swing_data():
+    idx = pd.date_range("2024-01-01", periods=120, freq="B")
+    close = pd.Series(20 + np.sin(np.linspace(0, 15, 120)) * 4 + np.linspace(0, 2, 120), index=idx)
+    data = pd.DataFrame({"Open": close, "High": close + 0.5, "Low": close - 0.5, "Close": close, "Volume": 1000}, index=idx)
+    result = latest_fibonacci_levels(data, window=2)
+    assert result["levels"]
+    assert set(result["extensions"]) == {"1.272", "1.618", "2.000"}
 
 def test_trend_classification_on_rising_series():
     assert _trend(sample_data()) == "ميل صاعد"
