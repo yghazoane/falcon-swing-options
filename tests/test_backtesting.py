@@ -23,24 +23,41 @@ def test_observations_enter_after_signal_and_exit_at_horizon():
     assert first["entry_time"] == frame.index[signal_position + 1]
     assert first["exit_time"] == frame.index[signal_position + horizon]
     assert observations["exit_time"].max() <= frame.index[-1]
+    assert observations["estimated_round_trip_cost_bps"].eq(10).all()
 
 
-def test_walk_forward_is_chronological_and_purges_boundary_overlap():
+def test_unsorted_and_duplicate_history_is_normalized():
+    frame = history()
+    noisy = pd.concat([frame.iloc[::-1], frame.iloc[[-1]]])
+    result = build_historical_observations(noisy)
+    assert result["signal_time"].is_monotonic_increasing
+    assert not result["signal_time"].duplicated().any()
+
+
+def test_walk_forward_reports_non_overlapping_portfolio_metrics():
     observations = build_historical_observations(history())
     report = walk_forward_validate(observations, train_fraction=0.7)
     test_start = report["test"]["signal_time"].min()
     assert report["train"]["signal_time"].max() < test_start
     assert (report["train"]["exit_time"] < test_start).all()
     assert report["purged_training_observations"] >= 0
-    assert report["train_metrics"]["observations"] + report["test_metrics"]["observations"] == len(report["train"]) + len(report["test"])
-    assert report["test_metrics"]["observations"] > 0
+    assert report["train_metrics"]["observations"] == len(report["train_non_overlapping"])
+    assert report["test_metrics"]["observations"] == len(report["test_non_overlapping"])
+    assert report["train_signal_metrics"]["observations"] == len(report["train"])
+    assert report["test_signal_metrics"]["observations"] == len(report["test"])
+    for trades in (report["train_non_overlapping"], report["test_non_overlapping"]):
+        if len(trades) > 1:
+            assert (trades["entry_time"].iloc[1:].reset_index(drop=True)
+                    > trades["exit_time"].iloc[:-1].reset_index(drop=True)).all()
 
 
 def test_rejects_invalid_horizon_and_fraction():
     with pytest.raises(ValueError, match="horizon"):
         build_historical_observations(history(), horizon=0)
     with pytest.raises(ValueError, match="train_fraction"):
-        walk_forward_validate(pd.DataFrame({"signal_time": [], "strategy_return": [], "exit_time": []}), train_fraction=0.4)
+        walk_forward_validate(pd.DataFrame({
+            "signal_time": [], "entry_time": [], "strategy_return": [], "exit_time": []
+        }), train_fraction=0.4)
 
 
 def test_short_history_is_rejected():
