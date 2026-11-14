@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from datetime import time
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -8,19 +10,79 @@ from .indicators import add_indicators
 from .market import load_history
 from .structure import describe_market_structure
 
+NEW_YORK = ZoneInfo("America/New_York")
+
+
+def _ordered(data: pd.DataFrame) -> pd.DataFrame:
+    frame = data.copy()
+    if isinstance(frame.index, pd.DatetimeIndex):
+        frame = frame[~frame.index.isna()]
+        frame = frame[~frame.index.duplicated(keep="last")].sort_index(kind="stable")
+    return frame
+
+
+def _regular_session_four_hour_bars(hourly: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate hourly bars into NYSE-session anchored 4H buckets.
+
+    The final bucket of a regular session is naturally shorter than four hours.
+    This is a derived view, not an exchange-native four-hour candle.
+    """
+    if hourly.empty:
+        return pd.DataFrame()
+    frame = _ordered(hourly)
+    if not isinstance(frame.index, pd.DatetimeIndex):
+        raise ValueError("Hourly history must have a DatetimeIndex")
+    if frame.index.tz is None:
+        frame.index = frame.index.tz_localize(NEW_YORK)
+    else:
+        frame.index = frame.index.tz_convert(NEW_YORK)
+
+    session_mask = [
+        time(9, 30) <= timestamp.time() < time(16, 0)
+        for timestamp in frame.index
+    ]
+    frame = frame.loc[session_mask]
+    if frame.empty:
+        return pd.DataFrame()
+
+    chunks = []
+    session_dates = pd.Index(frame.index.date).unique()
+    for session_date in session_dates:
+        session = frame.loc[[stamp.date() == session_date for stamp in frame.index]]
+        if session.empty:
+            continue
+        aggregated = session.resample(
+            "4h", origin="start_day", offset="9h30min",
+            label="left", closed="left",
+        ).agg({
+            "Open": "first", "High": "max", "Low": "min",
+            "Close": "last", "Volume": "sum",
+        })
+        counts = session["Close"].resample(
+            "4h", origin="start_day", offset="9h30min",
+            label="left", closed="left",
+        ).count()
+        aggregated["source_hour_bars"] = counts
+        aggregated = aggregated.dropna(subset=["Open", "High", "Low", "Close"])
+        chunks.append(aggregated)
+    if not chunks:
+        return pd.DataFrame()
+    return pd.concat(chunks).sort_index()
+
 
 def analyze_timeframe(data: pd.DataFrame, timeframe: str, source: str) -> dict[str, Any]:
     """Create a descriptive multi-indicator snapshot for one timeframe."""
+    frame = _ordered(data)
     result: dict[str, Any] = {
         "timeframe": timeframe, "trend": "بيانات غير كافية", "momentum": "غير واضح",
         "volume_state": "غير متاح", "structure": "غير محدد", "structure_event": "غير متاح",
         "close": None, "ema20": None, "ema50": None, "ema200": None, "rsi14": None,
-        "macd_state": "غير متاح", "volume_ratio": None, "bars": int(len(data)),
+        "macd_state": "غير متاح", "volume_ratio": None, "bars": int(len(frame)),
         "source": source, "status": "insufficient",
     }
-    if data.empty or "Close" not in data:
+    if frame.empty or "Close" not in frame:
         return result
-    frame = add_indicators(data)
+    frame = add_indicators(frame)
     last = frame.iloc[-1]
     result["close"] = float(last["Close"])
     for column, key in (("EMA20", "ema20"), ("EMA50", "ema50"), ("EMA200", "ema200")):
@@ -51,7 +113,11 @@ def analyze_timeframe(data: pd.DataFrame, timeframe: str, source: str) -> dict[s
         if pd.notna(average) and average > 0:
             ratio = float(last["Volume"] / average)
             result["volume_ratio"] = ratio
-            result["volume_state"] = "أعلى من متوسط 20 شمعة" if ratio > 1.2 else "أقل من متوسط 20 شمعة" if ratio < 0.8 else "قريب من المتوسط"
+            result["volume_state"] = (
+                "أعلى من متوسط 20 شمعة" if ratio > 1.2
+                else "أقل من متوسط 20 شمعة" if ratio < 0.8
+                else "قريب من المتوسط"
+            )
     structure = describe_market_structure(frame)
     result["structure"] = str(structure["trend"])
     result["structure_event"] = str(structure["event"])
@@ -83,25 +149,25 @@ def summarize_alignment(rows: list[dict[str, Any]]) -> dict[str, str | int]:
 
 
 def load_multi_timeframe(symbol: str) -> tuple[list[dict[str, Any]], dict[str, str | int]]:
-    """Load daily/hourly history and derive 4H bars from hourly data."""
+    """Load daily/hourly history and derive NYSE-session anchored 4H bars."""
     rows: list[dict[str, Any]] = []
     try:
         daily = load_history(symbol, period="1y", interval="1d")
-        rows.append(analyze_timeframe(daily, "1D", "شموع يومية من المزود"))
-    except Exception:
-        rows.append(analyze_timeframe(pd.DataFrame(), "1D", "غير متاح"))
+        rows.append(analyze_timeframe(daily, "1D", "شموع يومية معدّلة من المزود"))
+    except Exception as exc:
+        rows.append(analyze_timeframe(pd.DataFrame(), "1D", f"تعذر التحميل: {type(exc).__name__}"))
     try:
         hourly = load_history(symbol, period="60d", interval="1h")
-        rows.append(analyze_timeframe(hourly, "1H", "شموع ساعة من المزود"))
+        rows.append(analyze_timeframe(hourly, "1H", "شموع ساعة من المزود؛ قد تكون متأخرة"))
         if not hourly.empty:
-            four_hour = hourly.resample("4h").agg({
-                "Open": "first", "High": "max", "Low": "min",
-                "Close": "last", "Volume": "sum",
-            }).dropna(subset=["Open", "High", "Low", "Close"])
-            rows.append(analyze_timeframe(four_hour, "4H مشتق", "تجميع شموع الساعة؛ ليس إطاراً أصلياً من المزود"))
+            four_hour = _regular_session_four_hour_bars(hourly)
+            rows.append(analyze_timeframe(
+                four_hour, "4H مشتق",
+                "تجميع جلسة نيويورك من 09:30؛ الشمعة الأخيرة أقصر وقد تكون البيانات ناقصة",
+            ))
         else:
             rows.append(analyze_timeframe(pd.DataFrame(), "4H مشتق", "لا تتوفر شموع ساعة للاشتقاق"))
-    except Exception:
-        rows.append(analyze_timeframe(pd.DataFrame(), "1H", "غير متاح"))
-        rows.append(analyze_timeframe(pd.DataFrame(), "4H مشتق", "غير متاح"))
+    except Exception as exc:
+        rows.append(analyze_timeframe(pd.DataFrame(), "1H", f"تعذر التحميل: {type(exc).__name__}"))
+        rows.append(analyze_timeframe(pd.DataFrame(), "4H مشتق", f"تعذر التجميع: {type(exc).__name__}"))
     return rows, summarize_alignment(rows)
