@@ -3,7 +3,8 @@ name: Python checks
 on:
   push:
     branches:
-      - rebuild/falcon-swing-options-python
+      - main
+      - feature/streamlit-market-options-data
   pull_request:
     branches:
       - main
@@ -21,6 +22,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Compile Python modules
-        run: python -m compileall -q app.py falcon tests
+        run: python -m compileall -q app.py falcon pages tests
       - name: Run unit tests
         run: pytest -q
