@@ -32,8 +32,32 @@ def test_load_options_chain_normalizes_quotes_and_calculates_greeks(monkeypatch)
     row = result["calls"].iloc[0]
     assert row["mid"] == pytest.approx(4.0)
     assert row["spread"] == pytest.approx(0.2)
-    assert row["delta"] is not None
+    assert pd.notna(row["delta"])
+    assert row["quote_validity"] == "عرض وطلب صالحان حسابياً"
+    assert "not be synchronized" in result["spot_reference_warning"]
     assert result["puts"].empty
+
+
+def test_invalid_bid_ask_are_not_used_for_mid(monkeypatch):
+    class InvalidQuoteTicker(FakeTicker):
+        def option_chain(self, expiry):
+            result = super().option_chain(expiry)
+            result.calls.loc[0, "ask"] = 3.5
+            return result
+
+    monkeypatch.setattr(options_data.yf, "Ticker", InvalidQuoteTicker)
+    result = options_data.load_options_chain("TEST", "2027-01-15", 100.0)
+    row = result["calls"].iloc[0]
+    assert pd.isna(row["mid"])
+    assert pd.isna(row["spread"])
+    assert row["quote_validity"] == "غير مكتمل أو غير صالح"
+
+
+@pytest.mark.parametrize("spot", [0, -1, float("nan"), float("inf")])
+def test_rejects_invalid_spot(monkeypatch, spot):
+    monkeypatch.setattr(options_data.yf, "Ticker", FakeTicker)
+    with pytest.raises(ValueError, match="spot"):
+        options_data.load_options_chain("TEST", "2027-01-15", spot)
 
 
 def test_rejects_unknown_expiration(monkeypatch):
@@ -42,6 +66,6 @@ def test_rejects_unknown_expiration(monkeypatch):
         options_data.load_options_chain("TEST", "2027-02-19", 100.0)
 
 
-def test_rejects_invalid_spot():
-    with pytest.raises(ValueError, match="spot must be positive"):
-        options_data.load_options_chain("TEST", "2027-01-15", 0)
+def test_expiry_days_use_new_york_close():
+    now = options_data.datetime(2027, 1, 15, 15, 0, tzinfo=options_data.NEW_YORK)
+    assert options_data._days_to_expiry("2027-01-15", now) == pytest.approx(1 / 24)
