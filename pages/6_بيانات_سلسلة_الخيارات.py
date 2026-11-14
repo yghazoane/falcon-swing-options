@@ -9,6 +9,8 @@ from falcon.options_data import get_option_expirations, load_options_chain
 from falcon.contract_screening import rank_contract_data_quality
 from falcon.market_intelligence import build_market_intelligence
 from falcon.multi_timeframe import load_multi_timeframe
+from falcon.fed_news import FedFeedError, load_fed_news
+from falcon.news_impact import classify_news_impact
 
 st.set_page_config(page_title="Falcon · بيانات سلسلة الخيارات", page_icon="🦅", layout="wide")
 require_password()
@@ -101,6 +103,25 @@ try:
             hide_index=True,
         )
     st.caption(market_context["method_note"])
+    st.markdown("**آخر أخبار الاحتياطي الفيدرالي**")
+    try:
+        fed_payload = load_fed_news()
+        news_rows = []
+        for item in fed_payload.get("items", [])[:5]:
+            impact = classify_news_impact(item)
+            news_rows.append({
+                "تاريخ النشر": item.get("published") or "غير متاح",
+                "العنوان": item.get("title", ""),
+                "الأثر النصي المحتمل": impact["label"],
+                "مستوى الثقة": impact["confidence"],
+                "الرابط": item.get("link", ""),
+            })
+        if news_rows:
+            st.dataframe(pd.DataFrame(news_rows), use_container_width=True, hide_index=True)
+        else:
+            st.caption("لا توجد عناوين متاحة حالياً.")
+    except FedFeedError as news_exc:
+        st.caption(f"تعذر تحميل أخبار الفيدرالي: {news_exc}")
 except Exception as exc:
     st.warning(f"تعذر تحميل بعض عناصر سياق السوق: {type(exc).__name__}")
 
