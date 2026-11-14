@@ -1,49 +1,47 @@
-# Falcon Market Compass
+# Falcon Swing Options
 
-Build a polished responsive full-stack web application named "Falcon Market Intelligence" for educational market monitoring and historical analysis of the U.S. equity market. The user is a solo founder. This is a market intelligence dashboard, not a brokerage or trade execution app: do not provide personalized buy/sell/option-contract recommendations, order placement, or promises of predictive accuracy.
+Private, educational Streamlit workspace for studying U.S. market data, technical structure and options terminology. Paper analysis only.
 
-PRODUCT AND UX
-- Arabic is the default language with full RTL layout; add a working Arabic/English language toggle (English LTR).
-- Professional dark institutional-finance visual design, restrained blue/violet accents, excellent desktop and mobile responsiveness.
-- Main dashboard for S&P 500 and Nasdaq 100, with clear distinction between index values and ETF proxies (SPY/QQQ). Never label proxy data as the index itself.
-- Top bar: product name, market session/status, last refresh timestamp, data connection/status indicator, language toggle.
-- Overview cards: S&P 500, Nasdaq 100, VIX, US 10Y yield, US 2Y yield, DXY. If live providers are not configured, show clearly marked demo/sample values and never imply they are live.
-- Dashboard sections/tabs: Market Overview, Breadth & Sectors, Macro & Fed, News Intelligence, Historical Analysis, Data Sources / Settings.
-- Charts for index/proxy history, volume, moving averages (20/50/200), RSI, MACD, volatility; use sensible loading/empty/error states.
-- Breadth panels: advance/decline, up/down volume, new highs/lows, percentage above 50/200-day averages, sector performance. If no reliable feed exists, show unavailable rather than fabricated readings.
-- Macro calendar and cards for CPI, Core CPI, PCE, Core PCE, PPI, NFP, unemployment, GDP, retail sales, ISM, Fed/FOMC decisions and minutes; show actual/forecast/previous and release timestamps only when sourced.
-- Rates/markets context: Treasury 2Y/10Y and spread, DXY, VIX, oil, major global market context.
-- News Intelligence: sourced headlines with publisher, published time, source link, category, importance and neutral impact summary. Do not invent headlines or sources.
-- Historical Analysis: selectable date range and instrument; show historical chart and descriptive metrics. Include transparent methodology and a validation section for historical signal testing; avoid claims of guaranteed or 80% accuracy.
-- Data Sources / Settings: provider status, timestamps, stale-data warnings, source attribution, and secure server-side environment variable configuration guidance. Never expose API keys in client code or browser UI.
+## Run locally
 
-IMPLEMENTATION
-- Use the platform's supported full-stack TypeScript stack and reusable components.
-- Build a clean modular architecture for market data, macro data, news, and analytics.
-- Start with a functional dashboard using conspicuously labeled demo data only where necessary. Create provider adapter interfaces/placeholders so licensed APIs can be connected later; do not fabricate real-time feeds.
-- Add a clear banner explaining that live and historical coverage depends on configured data providers, subscriptions, and data licensing.
-- Include graceful empty states and robust error handling.
-- Seed the UI with plausible illustrative demo values only if every such value is labeled "Demo / Illustrative" and cannot be mistaken for a live quote.
-- Add a README or in-app setup guide listing required provider credentials as server-side secrets, without requesting secrets in chat.
-Deliver a working first version with polished dashboard UI and responsive navigation.
-
-This project was built with [Lovable](https://lovable.dev).
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/4dd15bb3-6282-4827-bf68-1fec3c89c919).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+pip install -r requirements.txt
+mkdir -p .streamlit
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
 ```
+
+Edit `.streamlit/secrets.toml` and replace the sample value with a strong, unique password. Never commit that file or share the password. Then start the app:
+
+```bash
+streamlit run app.py
+```
+
+## Optional hosted deployment
+
+A Render Blueprint is included in `render.yaml`. To deploy it, connect this GitHub repository in Render and create the service from the Blueprint. During setup, set the private `FALCON_APP_PASSWORD` environment variable to a strong, unique password. Do not put the password in GitHub or in the YAML file. The service is configured for a free instance, which may sleep when idle and may have cold-start delays. Review the host's current limits before relying on it.
+
+For Streamlit Community Cloud or another host, add `app_password` through the host's private Streamlit Secrets interface. The app fails closed when no password is configured.
+
+## Current modules
+
+- Market overview: SPY, QQQ, DIA, IWM and VIX
+- Searchable Nasdaq Trader symbol directory for Nasdaq and other listed exchanges (not OTC-complete)
+- Sector ETF snapshots and macro proxy dashboard
+- Daily/hourly comparison; 4-hour candles are resampled from hourly bars
+- EMA 20/50/200, RSI 14, MACD and ATR 14
+- Confirmed swing pivots and Fibonacci retracement references
+- Password gate, five-minute data cache, GitHub Actions compilation and unit tests
+
+## Data limitations
+
+Yahoo Finance through yfinance is an unofficial historical-data adapter. It is not a guaranteed real-time feed and may return delayed, incomplete or unavailable data. The app caches responses for five minutes and displays no fabricated fallback data. The 4-hour view is derived from hourly bars and is not provider-native.
+
+Federal Reserve headlines and an economic calendar are not integrated. The listed rates, dollar, gold and oil symbols are proxies, not official macroeconomic releases.
+
+No options-chain feed, option Greeks, implied volatility, complete U.S. symbol master, broker integration or order execution is connected yet. These require separate providers, credentials, licensing review and validation. The app intentionally does not synthesize missing option data.
+
+## Safety and scope
+
+This is a learning and paper-analysis project. Outputs describe historical observations; they are not probabilities, predictions, or trading instructions. No real-money trading or broker connection is supported.
