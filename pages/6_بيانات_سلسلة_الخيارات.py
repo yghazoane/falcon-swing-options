@@ -7,6 +7,8 @@ from falcon.auth import require_password
 from falcon.market import load_history
 from falcon.options_data import get_option_expirations, load_options_chain
 from falcon.contract_screening import rank_contract_data_quality
+from falcon.market_intelligence import build_market_intelligence
+from falcon.multi_timeframe import load_multi_timeframe
 
 st.set_page_config(page_title="Falcon · بيانات سلسلة الخيارات", page_icon="🦅", layout="wide")
 require_password()
@@ -73,6 +75,34 @@ st.caption(
 )
 st.caption(snapshot["spot_reference_warning"])
 st.caption(snapshot["model_assumptions"])
+
+st.subheader("سياق السوق والأصل الأساسي")
+try:
+    with st.spinner("قراءة اتجاه المؤشرات والأطر الزمنية..."):
+        market_context = build_market_intelligence()
+        timeframe_rows, timeframe_alignment = load_multi_timeframe(symbol)
+    context_cols = st.columns(3)
+    context_cols[0].metric("حالة السوق العامة", market_context["regime"])
+    context_cols[1].metric("درجة ثقة التصنيف", market_context["confidence"])
+    context_cols[2].metric("توافق أطر الأصل", timeframe_alignment["label"])
+    if market_context.get("selected_benchmarks"):
+        st.dataframe(pd.DataFrame(market_context["selected_benchmarks"]), use_container_width=True, hide_index=True)
+    timeframe_frame = pd.DataFrame(timeframe_rows)
+    if not timeframe_frame.empty:
+        st.dataframe(
+            timeframe_frame[["timeframe", "trend", "momentum", "macd_state", "volume_state", "status", "source"]]
+            .rename(columns={
+                "timeframe": "الإطار", "trend": "الاتجاه",
+                "momentum": "الزخم", "macd_state": "MACD",
+                "volume_state": "الحجم", "status": "حالة البيانات",
+                "source": "المصدر",
+            }),
+            use_container_width=True,
+            hide_index=True,
+        )
+    st.caption(market_context["method_note"])
+except Exception as exc:
+    st.warning(f"تعذر تحميل بعض عناصر سياق السوق: {type(exc).__name__}")
 
 columns = [
     "contractSymbol", "strike", "lastPrice", "bid", "ask", "mid",
