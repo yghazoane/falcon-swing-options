@@ -3,12 +3,14 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from falcon.auth import require_password
 from falcon.market import load_history
 from falcon.market_intelligence import build_market_intelligence
 from falcon.multi_timeframe import load_multi_timeframe
 from falcon.stock_analysis import analyze_stock_frame
 
 st.set_page_config(page_title="Falcon — التحليل الفني المتقدم", page_icon="🦅", layout="wide")
+require_password()
 st.title("🦅 Falcon — التحليل الفني المتقدم")
 st.caption("تحليل وصفي متعدد الأطر الزمنية · بيانات تاريخية/قد تكون متأخرة · لا يصدر أوامر أو توصيات تنفيذية")
 
