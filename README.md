@@ -18,7 +18,11 @@ Edit `.streamlit/secrets.toml` and replace the sample value with a strong, uniqu
 streamlit run app.py
 ```
 
-For a hosted deployment, add the same `app_password` key through the host's private Streamlit Secrets interface. The app fails closed when the secret is missing.
+## Optional hosted deployment
+
+A Render Blueprint is included in `render.yaml`. To deploy it, connect this GitHub repository in Render and create the service from the Blueprint. During setup, set the private `FALCON_APP_PASSWORD` environment variable to a strong, unique password. Do not put the password in GitHub or in the YAML file. The service is configured for a free instance, which may sleep when idle and may have cold-start delays. Review the host's current limits before relying on it.
+
+For Streamlit Community Cloud or another host, add `app_password` through the host's private Streamlit Secrets interface. The app fails closed when no password is configured.
 
 ## Current modules
 
