@@ -1,7 +1,5 @@
 from __future__ import annotations
-
 import pandas as pd
-
 
 def add_indicators(data: pd.DataFrame) -> pd.DataFrame:
     df = data.copy()
@@ -12,7 +10,10 @@ def add_indicators(data: pd.DataFrame) -> pd.DataFrame:
     gain = delta.clip(lower=0).ewm(alpha=1 / 14, adjust=False, min_periods=14).mean()
     loss = (-delta.clip(upper=0)).ewm(alpha=1 / 14, adjust=False, min_periods=14).mean()
     rs = gain / loss.replace(0, float("nan"))
-    df["RSI14"] = 100 - (100 / (1 + rs))
+    rsi = 100 - (100 / (1 + rs))
+    rsi = rsi.mask((loss == 0) & (gain > 0), 100)
+    rsi = rsi.mask((gain == 0) & (loss > 0), 0)
+    df["RSI14"] = rsi
     ema12 = close.ewm(span=12, adjust=False).mean()
     ema26 = close.ewm(span=26, adjust=False).mean()
     df["MACD"] = ema12 - ema26
