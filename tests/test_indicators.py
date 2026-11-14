@@ -5,6 +5,7 @@ from falcon.structure import add_confirmed_pivots
 from falcon.fibonacci import latest_fibonacci_levels
 from falcon.regime import _trend, _pct_change
 from falcon.universe import parse_symbol_directories
+from falcon.volume_profile import volume_by_price
 
 def sample_data():
     idx = pd.date_range("2024-01-01", periods=260, freq="B")
@@ -13,11 +14,25 @@ def sample_data():
 
 def test_indicator_columns_and_rsi_edge_case():
     result = add_indicators(sample_data())
-    for col in ("EMA20", "EMA50", "EMA200", "RSI14", "MACD", "MACDSignal", "ATR14"):
+    for col in ("EMA20", "EMA50", "EMA200", "RSI14", "MACD", "MACDSignal", "ATR14", "VWAP"):
         assert col in result.columns
     assert result["EMA20"].notna().any()
     assert result["ATR14"].notna().any()
     assert result["RSI14"].dropna().iloc[-1] == 100
+    assert result["VWAP"].notna().all()
+
+def test_intraday_vwap_resets_each_session():
+    idx = pd.date_range("2024-01-02 14:30", periods=4, freq="h", tz="UTC")
+    idx = idx.append(pd.date_range("2024-01-03 14:30", periods=2, freq="h", tz="UTC"))
+    close = pd.Series([10, 12, 14, 16, 20, 22], index=idx, dtype=float)
+    data = pd.DataFrame({"Open": close, "High": close + 1, "Low": close - 1, "Close": close, "Volume": 100}, index=idx)
+    result = add_indicators(data)
+    assert result["VWAP"].iloc[0] == pytest.approx(10)
+    assert result["VWAP"].iloc[4] == pytest.approx(20)
+
+def test_volume_profile_preserves_total_volume():
+    profile = volume_by_price(sample_data(), bins=12)
+    assert profile["volume"].sum() == sample_data()["Volume"].sum()
 
 def test_pivots_wait_for_right_side_confirmation():
     result = add_confirmed_pivots(sample_data(), window=3)
