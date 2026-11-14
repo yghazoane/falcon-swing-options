@@ -11,6 +11,7 @@ from falcon.regime import market_dashboard, compare_timeframes
 from falcon.scoring import describe_confluence
 from falcon.structure import describe_market_structure
 from falcon.universe import load_us_equity_universe
+from falcon.volume_profile import volume_by_price
 
 st.set_page_config(page_title="Falcon Swing Options", page_icon="🦅", layout="wide")
 require_password()
@@ -95,7 +96,7 @@ with tab_asset:
     d.metric("ATR 14", f"{last['ATR14']:.2f}" if pd.notna(last["ATR14"]) else "—")
     fig = go.Figure()
     fig.add_trace(go.Candlestick(x=frame.index, open=frame["Open"], high=frame["High"], low=frame["Low"], close=frame["Close"], name=symbol))
-    for col, label in (("EMA20", "EMA 20"), ("EMA50", "EMA 50"), ("EMA200", "EMA 200")):
+    for col, label in (("EMA20", "EMA 20"), ("EMA50", "EMA 50"), ("EMA200", "EMA 200"), ("VWAP", "VWAP")):
         fig.add_trace(go.Scatter(x=frame.index, y=frame[col], name=label, line={"width": 1.4}))
     fig.add_trace(go.Scatter(x=structure["annotated"].index, y=structure["annotated"]["PivotHigh"], mode="markers", name="Swing High", marker={"symbol": "triangle-down", "size": 9}))
     fig.add_trace(go.Scatter(x=structure["annotated"].index, y=structure["annotated"]["PivotLow"], mode="markers", name="Swing Low", marker={"symbol": "triangle-up", "size": 9}))
@@ -120,6 +121,18 @@ with tab_asset:
         macd.add_trace(go.Scatter(x=frame.index, y=frame["MACDSignal"], name="Signal"))
         macd.update_layout(height=230)
         st.plotly_chart(macd, use_container_width=True)
+    st.subheader("الحجم وVWAP")
+    volume_fig = go.Figure()
+    volume_fig.add_trace(go.Bar(x=frame.index, y=frame["Volume"], name="Volume"))
+    volume_fig.update_layout(height=220, margin={"l": 10, "r": 10, "t": 20, "b": 10})
+    st.plotly_chart(volume_fig, use_container_width=True)
+    st.caption("VWAP محسوب من شموع المزود؛ في اليومي/الأسبوعي يكون متوسطاً مرجعياً تراكمياً للفترة، وفي البيانات داخل اليوم يعاد ضبطه حسب التاريخ.")
+    profile = volume_by_price(frame)
+    if not profile.empty:
+        profile_fig = go.Figure(go.Bar(x=profile["volume"], y=profile["price_level"], orientation="h", name="Volume by price (proxy)"))
+        profile_fig.update_layout(height=360, xaxis_title="حجم تقريبي", yaxis_title="مستوى السعر", margin={"l": 10, "r": 10, "t": 20, "b": 10})
+        st.plotly_chart(profile_fig, use_container_width=True)
+    st.caption("توزيع الحجم حسب السعر تقريبي باستخدام السعر النموذجي لكل شمعة، وليس Volume Profile حقيقياً مبنياً على كل صفقة.")
     st.subheader("مستويات Fibonacci المرجعية")
     if fib["levels"]:
         st.caption(f"اتجاه الساق: {fib['direction']} · النطاق: {fib['swing_low']:.2f} — {fib['swing_high']:.2f}")

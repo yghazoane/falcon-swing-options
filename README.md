@@ -31,7 +31,8 @@ For Streamlit Community Cloud or another host, add `app_password` through the ho
 - Searchable Nasdaq Trader symbol directory for Nasdaq and other listed exchanges (not OTC-complete)
 - Sector ETF snapshots and macro proxy dashboard
 - Daily/hourly comparison; 4-hour candles are resampled from hourly bars
-- EMA 20/50/200, RSI 14, MACD and ATR 14
+- EMA 20/50/200, RSI 14, MACD, ATR 14 and VWAP
+- Candle-level approximate volume-by-price profile (explicitly not trade-level volume-at-price)
 - Confirmed swing pivots and Fibonacci retracement references
 - Password gate, five-minute data cache, GitHub Actions compilation and unit tests
 
