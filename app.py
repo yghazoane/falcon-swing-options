@@ -13,6 +13,7 @@ from falcon.news_impact import classify_news_impact
 from falcon.multi_timeframe import load_multi_timeframe
 from falcon.scoring import describe_confluence
 from falcon.structure import describe_market_structure
+from falcon.technical_analysis import analyze_stock_technicals
 from falcon.universe import load_us_equity_universe
 from falcon.volume_profile import volume_by_price
 
@@ -139,6 +140,23 @@ with tab_universe:
     except Exception as exc:
         st.warning(f"تعذر تحميل دليل الرموز حالياً: {exc}. يمكنك إدخال الرمز يدوياً.")
 with tab_asset:
+    technical = analyze_stock_technicals(frame, pivot_window)
+    st.subheader(f"{symbol} — التحليل الفني المتكامل")
+    st.caption(f"آخر شمعة: {technical['as_of']} · عدد الشموع: {technical['bars']}")
+    t1, t2, t3, t4 = st.columns(4)
+    t1.metric("بنية المتوسطات", technical["trend"])
+    t2.metric("الزخم", technical["momentum"])
+    t3.metric("حالة الحجم", technical["volume"])
+    t4.metric("ATR %", f"{technical['atr_pct']:.2f}%" if technical["atr_pct"] is not None else "—")
+    st.markdown("**الهيكل السعري والمستويات المرجعية**")
+    levels = [
+        {"العنصر": "آخر قاع محوري مؤكد", "القيمة": technical["support"]},
+        {"العنصر": "آخر قمة محورية مؤكدة", "القيمة": technical["resistance"]},
+        {"العنصر": "Volume Profile POC تقريبي", "القيمة": technical["volume_profile_poc"]},
+        {"العنصر": "نسبة الحجم إلى متوسط 20 شمعة", "القيمة": technical["volume_ratio"]},
+    ]
+    st.dataframe(pd.DataFrame(levels), use_container_width=True, hide_index=True)
+    st.caption(technical["structure"]["event"] + " · " + technical["note"])
     st.subheader(f"{symbol} — السعر والمؤشرات")
     st.caption(f"آخر شمعة أعادها المصدر: {last_bar_time} · قد تكون البيانات متأخرة أو غير مكتملة.")
     a, b, c, d = st.columns(4)

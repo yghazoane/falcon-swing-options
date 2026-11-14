@@ -6,7 +6,8 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from falcon.auth import require_password
-from falcon.context import summarize_market_context
+from falcon.market_intelligence import build_market_intelligence
+from falcon.technical_analysis import analyze_stock_technicals
 from falcon.indicators import add_indicators
 from falcon.market import load_history
 from falcon.multi_timeframe import load_multi_timeframe
@@ -32,7 +33,7 @@ if not symbol:
 try:
     with st.spinner(f"تحميل بيانات {symbol} والسياق العام..."):
         raw = load_history(symbol, period=period, interval="1d")
-        market_context = summarize_market_context()
+        market_intelligence = build_market_intelligence()
         timeframe_rows, timeframe_alignment = load_multi_timeframe(symbol)
 except Exception as exc:
     st.error(f"تعذر تحميل البيانات: {exc}")
@@ -45,13 +46,31 @@ if raw.empty:
 frame = add_indicators(raw)
 last = frame.iloc[-1]
 structure = describe_market_structure(frame)
+technical = analyze_stock_technicals(frame)
 spot = float(last["Close"])
 last_time = frame.index[-1]
 
 st.subheader("1) قراءة السوق العام")
-st.info(market_context["message"])
-st.caption(market_context["data_note"])
+market_cols = st.columns(3)
+market_cols[0].metric("حالة السوق", market_intelligence["regime"])
+market_cols[1].metric("ثقة التصنيف", market_intelligence["confidence"])
+market_cols[2].metric("آخر تاريخ بيانات", market_intelligence["latest_data_date"] or "غير متاح")
+st.caption(market_intelligence["method_note"])
+st.caption(market_intelligence["data_note"])
 st.subheader(f"2) قراءة السهم: {symbol}")
+tech_cols = st.columns(4)
+tech_cols[0].metric("اتجاه المتوسطات", technical["trend"])
+tech_cols[1].metric("الزخم", technical["momentum"])
+tech_cols[2].metric("الحجم", technical["volume"])
+tech_cols[3].metric("ATR %", f"{technical['atr_pct']:.2f}%" if technical["atr_pct"] is not None else "—")
+st.caption(technical["structure"]["event"] + " · " + technical["note"])
+technical_levels = [
+    {"العنصر": "آخر قاع محوري مؤكد", "القيمة": technical["support"]},
+    {"العنصر": "آخر قمة محورية مؤكدة", "القيمة": technical["resistance"]},
+    {"العنصر": "POC تقريبي للحجم حسب السعر", "القيمة": technical["volume_profile_poc"]},
+    {"العنصر": "نسبة الحجم إلى متوسط 20 شمعة", "القيمة": technical["volume_ratio"]},
+]
+st.dataframe(pd.DataFrame(technical_levels), use_container_width=True, hide_index=True)
 st.caption(f"آخر إغلاق متاح: {last_time} · السعر المرجعي للنموذج: {spot:,.2f}")
 cols = st.columns(4)
 cols[0].metric("آخر إغلاق", f"{spot:,.2f}")
