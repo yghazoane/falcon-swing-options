@@ -2,6 +2,7 @@ import pandas as pd
 from falcon.indicators import add_indicators
 from falcon.structure import add_confirmed_pivots
 from falcon.fibonacci import latest_fibonacci_levels
+from falcon.regime import _trend, _pct_change
 
 def sample_data():
     idx = pd.date_range("2024-01-01", periods=260, freq="B")
@@ -24,3 +25,10 @@ def test_pivots_wait_for_right_side_confirmation():
 def test_fibonacci_handles_insufficient_swings():
     result = latest_fibonacci_levels(sample_data(), window=3)
     assert result["levels"] == {}
+
+def test_trend_classification_on_rising_series():
+    assert _trend(sample_data()) == "ميل صاعد"
+
+def test_pct_change_requires_enough_history():
+    assert _pct_change(pd.Series([10.0, 11.0]), 1) == 10.0
+    assert _pct_change(pd.Series([10.0]), 1) is None
