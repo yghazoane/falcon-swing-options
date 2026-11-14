@@ -30,6 +30,10 @@ with st.sidebar:
     min_dte, max_dte = st.slider("نطاق الأيام حتى الانتهاء", 0, 180, (7, 60))
     refresh = st.button("تحديث سلسلة الخيارات", use_container_width=True)
 
+if refresh:
+    st.cache_data.clear()
+    st.rerun()
+
 if not symbol:
     st.info("أدخل رمز الأصل.")
     st.stop()
