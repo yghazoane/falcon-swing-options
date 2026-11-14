@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import pandas as pd
-
 from .market import load_history
 
 CORE_MARKETS = {
-    "SPY": "S&P 500 ETF",
-    "QQQ": "Nasdaq-100 ETF",
+    "^GSPC": "S&P 500 Index",
+    "SPY": "S&P 500 ETF proxy",
+    "^NDX": "Nasdaq-100 Index",
+    "QQQ": "Nasdaq-100 ETF proxy",
     "DIA": "Dow Jones ETF",
     "IWM": "Russell 2000 ETF",
     "^VIX": "VIX volatility index",
@@ -61,7 +61,7 @@ def _row(symbol: str, label: str, period: str = "6mo") -> dict[str, object]:
                 "trend": "غير متاح", "status": "unavailable"}
 
 def market_dashboard() -> dict[str, list[dict[str, object]]]:
-    """Return transparent index, sector and macro proxy snapshots."""
+    """Return direct index series separately from ETF proxy series."""
     return {
         "indices": [_row(s, n) for s, n in CORE_MARKETS.items()],
         "sectors": [_row(s, n) for s, n in SECTORS.items()],
