@@ -85,8 +85,9 @@ def rank_contract_data_quality(
         True: "مطابق لمرشحات جودة البيانات",
         False: "لا يطابق جميع مرشحات جودة البيانات",
     })
+    result["_screen_sort"] = (~all_filters).astype(int)
     return result.sort_values(
-        ["screen_status", "data_quality_score", "openInterest", "volume"],
+        ["_screen_sort", "data_quality_score", "openInterest", "volume"],
         ascending=[True, False, False, False],
         na_position="last",
-    )
+    ).drop(columns=["_screen_sort"])
