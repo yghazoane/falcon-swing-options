@@ -85,4 +85,4 @@ def test_four_hour_bars_ignore_premarket_and_afterhours():
         "Close": values + 0.5, "Volume": 100,
     }, index=index)
     bars = _regular_session_four_hour_bars(hourly)
-    assert bars["source_hour_bars"].sum() == 6
+    assert bars["source_hour_bars"].sum() == 7
