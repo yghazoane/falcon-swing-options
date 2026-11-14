@@ -21,7 +21,7 @@ with st.sidebar:
     st.caption("الحد الأقصى 8 رموز في كل عملية فحص لتقليل ضغط الطلبات على مزود البيانات.")
     st.subheader("اختيار الانتهاء")
     min_dte, max_dte = st.slider("نطاق DTE المسموح", 1, 120, (7, 60))
-    target_dte = st.slider("DTE المستهدف لاختيار أقرب تاريخ انتهاء", min_dte, max_dte, min(30, max_dte))
+    target_dte = st.slider("DTE المستهدف لاختيار أقرب تاريخ انتهاء", min_dte, max_dte, min(max(30, min_dte), max_dte))
     st.subheader("مرشحات جودة العقد")
     min_premium, max_premium = st.slider("نطاق Mid بالدولار", 0.0, 20.0, (0.0, 4.0), 0.1)
     max_spread = st.slider("أقصى سبريد %", 1, 100, 20)
