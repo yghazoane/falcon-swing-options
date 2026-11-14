@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 from falcon.indicators import add_indicators
 from falcon.structure import add_confirmed_pivots
 from falcon.fibonacci import latest_fibonacci_levels
@@ -30,5 +31,5 @@ def test_trend_classification_on_rising_series():
     assert _trend(sample_data()) == "ميل صاعد"
 
 def test_pct_change_requires_enough_history():
-    assert _pct_change(pd.Series([10.0, 11.0]), 1) == 10.0
+    assert _pct_change(pd.Series([10.0, 11.0]), 1) == pytest.approx(10.0)
     assert _pct_change(pd.Series([10.0]), 1) is None

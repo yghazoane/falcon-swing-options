@@ -20,5 +20,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      - name: Compile Python modules
+        run: python -m compileall -q app.py falcon tests
       - name: Run unit tests
         run: pytest -q
