@@ -2,6 +2,7 @@ from __future__ import annotations
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
+from falcon.auth import require_password
 from falcon.context import summarize_market_context
 from falcon.fibonacci import latest_fibonacci_levels
 from falcon.indicators import add_indicators
@@ -11,6 +12,7 @@ from falcon.scoring import describe_confluence
 from falcon.structure import describe_market_structure
 
 st.set_page_config(page_title="Falcon Swing Options", page_icon="🦅", layout="wide")
+require_password()
 st.title("🦅 Falcon Swing Options")
 st.caption("مساحة تعليمية لتحليل بنية السوق — بيانات تاريخية/قد تكون متأخرة · محاكاة فقط")
 with st.sidebar:
